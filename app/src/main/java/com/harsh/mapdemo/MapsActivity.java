@@ -1,7 +1,10 @@
 package com.harsh.mapdemo;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -11,7 +14,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -26,20 +31,19 @@ import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.harsh.mapdemo.common.MapUtil;
 import com.harsh.mapdemo.model.Post;
 
 import org.json.JSONException;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by Harsh Rastogi on 7/28/2017.
  */
-public class MapsActivity extends AbstractMapActivity {
+public class MapsActivity extends AbstractMapActivity implements MapUtil.OnLocalityLoadListener {
 
 
     private GoogleMap mMap;
@@ -50,6 +54,9 @@ public class MapsActivity extends AbstractMapActivity {
     private Handler handler;
     private Post post;
     private float zoom = 6f;
+    public static final String TAG = "MapsActivity";
+    private PostAdapter adapter;
+    private ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +68,14 @@ public class MapsActivity extends AbstractMapActivity {
         recyclerView = (RecyclerView) findViewById(R.id.list);
         initGoogleApiClient();
         handler = new Handler(Looper.getMainLooper());
+    }
+
+    private void showProgress() {
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage("Getting location.");
+        progressDialog.setCancelable(true);
+        progressDialog.setIndeterminate(true);
+        progressDialog.show();
     }
 
     private void initGoogleApiClient() {
@@ -81,12 +96,13 @@ public class MapsActivity extends AbstractMapActivity {
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         mMap.setOnCameraMoveListener(this);
-        if (!hasLocationPermission()) {
-            requestLocationPermission();
+        if (!hasLocationPermission(this)) {
+            requestLocationPermission(this);
+        }else {
+            turnGPSOn();
         }
     }
 
-    @SuppressLint("MissingPermission")
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -105,9 +121,12 @@ public class MapsActivity extends AbstractMapActivity {
             showToast("Error parsing json file.", Toast.LENGTH_LONG);
             return;
         }
-        PostAdapter adapter = new PostAdapter(recyclerView, MapUtil.sortByDistance(currentLocation, data));
+        List<Post> posts = MapUtil.sortByDistance(currentLocation, data);
+        adapter = new PostAdapter(recyclerView, posts);
         recyclerView.setAdapter(adapter);
         adapter.setOnPostChangeListener(this);
+        MapUtil.LocalityLoader localityLoader = new MapUtil.LocalityLoader(this, posts, this);
+        localityLoader.start();
     }
 
     private void turnGPSOn() {
@@ -156,12 +175,15 @@ public class MapsActivity extends AbstractMapActivity {
 
     @Override
     public void onLocationChanged(Location location) {
+        Log.d(TAG, "Location: " + location.getLatitude() + ", " + location.getLongitude());
         initPostAdapter(location);
         stopLocationUpdates();
+        progressDialog.setMessage("Getting locality.");
     }
 
     private void startLocationUpdates() {
         try {
+            showProgress();
             LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, this);
         } catch (SecurityException e) {
             e.printStackTrace();
@@ -201,4 +223,26 @@ public class MapsActivity extends AbstractMapActivity {
     public void onCameraMove() {
         zoom = mMap.getCameraPosition().zoom;
     }
+
+    @Override
+    public void onLocalityLoad(final Map<Post, String> map) {
+
+        progressDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialogInterface) {
+                if (adapter == null) {
+                    return;
+                }
+                if (adapter.getData() != null) {
+                    List<Post> data = adapter.getData();
+                    for (Post post : data) {
+                        post.setLocality(map.get(post));
+                    }
+                    adapter.setData(data);
+                }
+            }
+        });
+        progressDialog.dismiss();
+    }
+
 }
