@@ -17,6 +17,7 @@ public class Post {
     @SerializedName("location")
     private PostLocation location;
 
+    private String locality;
     private float distance;
 
     public String getTitle() {
@@ -57,6 +58,14 @@ public class Post {
 
     public void setDistance(float distance) {
         this.distance = distance;
+    }
+
+    public String getLocality() {
+        return locality;
+    }
+
+    public void setLocality(String locality) {
+        this.locality = locality;
     }
 
     public static class PostLocation extends Object {
