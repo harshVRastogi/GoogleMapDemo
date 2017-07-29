@@ -1,6 +1,7 @@
 package com.harsh.mapdemo;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
@@ -73,15 +74,15 @@ public abstract class AbstractMapActivity extends FragmentActivity implements On
         return data;
     }
 
-    protected final boolean hasLocationPermission() {
-        return (ActivityCompat.checkSelfPermission(this,
+    protected final boolean hasLocationPermission(Activity activity) {
+        return (ActivityCompat.checkSelfPermission(activity,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this,
                         Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED);
     }
 
-    protected final void requestLocationPermission() {
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
+    protected final void requestLocationPermission(Activity activity) {
+        ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_CODE_LOCATION);
     }
 
@@ -92,7 +93,9 @@ public abstract class AbstractMapActivity extends FragmentActivity implements On
             postMarker.remove();
         }
         changeCameraPosition(mMap, postLatLng, zoom);
-        return addMarker(mMap, post);
+        Marker marker = addMarker(mMap, post);
+        marker.showInfoWindow();
+        return marker;
     }
 
     private Marker addMarker(final GoogleMap mMap, final Post post) {
@@ -100,9 +103,9 @@ public abstract class AbstractMapActivity extends FragmentActivity implements On
         return mMap.addMarker(new MarkerOptions()
                 .icon(BitmapDescriptorFactory
                         .defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
-                .position(postLatLng)
-                .title(post.getTag())
-                .snippet(post.getTitle()));
+                .title(post.getLocality())
+                .position(postLatLng));
+
     }
 
 
