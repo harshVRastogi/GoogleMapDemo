@@ -22,7 +22,7 @@ import java.util.List;
 
 public class PostAdapter extends RecyclerView.Adapter<PostAdapter.ViewHolder> {
 
-    private final List<Post> data;
+    private  List<Post> data;
     private final LinearLayoutManager mLinearLayoutManager;
     private final RecyclerView recyclerView;
     private OnPostChangeListener onPostChangeListener;
@@ -107,5 +107,14 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.ViewHolder> {
 
     public void setOnPostChangeListener(OnPostChangeListener onPostChangeListener) {
         this.onPostChangeListener = onPostChangeListener;
+    }
+
+    public List<Post> getData() {
+        return data;
+    }
+
+    public void setData(List<Post> data){
+        this.data = data;
+        notifyDataSetChanged();
     }
 }
